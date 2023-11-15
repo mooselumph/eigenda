@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 
 	"github.com/Layr-Labs/eigenda/api/grpc/churner"
@@ -440,6 +441,10 @@ func (t *Transactor) ConfirmBatch(ctx context.Context, batchHeader core.BatchHea
 		TotalStakeIndices:            checkSignaturesIndices.TotalStakeIndices,
 		NonSignerStakeIndices:        checkSignaturesIndices.NonSignerStakeIndices,
 	}
+
+	obj1, _ := json.Marshal(batchH)
+	obj2, _ := json.Marshal(signatureChecker)
+	t.Logger.Debug("batch calldata", "batchH", string(obj1), "signatureChecker", string(obj2))
 
 	tx, err := t.Bindings.EigenDAServiceManager.ConfirmBatch(t.EthClient.GetNoSendTransactOpts(), batchH, signatureChecker)
 	if err != nil {
