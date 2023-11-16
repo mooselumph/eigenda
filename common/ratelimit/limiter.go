@@ -57,9 +57,13 @@ func (d *rateLimiter) AllowRequest(ctx context.Context, requesterID common.Reque
 		deduction := time.Microsecond * time.Duration(1e6*float32(blobSize)/float32(rate)/d.globalRateParams.Multipliers[i])
 
 		// Update the bucket level
+		prevLevel := bucketParams.BucketLevels[i]
 		bucketParams.BucketLevels[i] = getBucketLevel(bucketParams.BucketLevels[i], size, interval, deduction)
 
 		allowed = allowed && bucketParams.BucketLevels[i] > 0
+
+		d.logger.Debug("Rate limiter", "key", requesterID, "bucket", i, "prevLevel", prevLevel, "newLevel", bucketParams.BucketLevels[i], "interval", interval, "deduction", deduction, "blobSize", blobSize, "rate", rate, "multiplier", d.globalRateParams.Multipliers[i], "allowed", allowed)
+
 	}
 
 	// Update the bucket based on blob size and current rate
