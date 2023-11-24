@@ -25,11 +25,19 @@ var (
 func setupSuite(t *testing.T) func(t *testing.T) {
 	log.Println("Setting up suite")
 
+	// kzgConfig = &kzgRs.KzgConfig{
+	// 	G1Path:    "../../../inabox/resources/kzg/g1.point",
+	// 	G2Path:    "../../../inabox/resources/kzg/g2.point",
+	// 	CacheDir:  "../../../inabox/resources/kzg/SRSTables",
+	// 	SRSOrder:  3000,
+	// 	NumWorker: uint64(runtime.GOMAXPROCS(0)),
+	// }
+
 	kzgConfig = &kzgRs.KzgConfig{
-		G1Path:    "../../../inabox/resources/kzg/g1.point",
-		G2Path:    "../../../inabox/resources/kzg/g2.point",
+		G1Path:    "../../../inabox/resources/kzg/g1.point.300000",
+		G2Path:    "../../../inabox/resources/kzg/g2.point.300000",
 		CacheDir:  "../../../inabox/resources/kzg/SRSTables",
-		SRSOrder:  3000,
+		SRSOrder:  300000,
 		NumWorker: uint64(runtime.GOMAXPROCS(0)),
 	}
 

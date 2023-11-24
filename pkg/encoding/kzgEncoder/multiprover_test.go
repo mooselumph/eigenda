@@ -16,7 +16,13 @@ func TestProveAllCosetThreads(t *testing.T) {
 
 	group, _ := kzgRs.NewKzgEncoderGroup(kzgConfig)
 
-	params := rs.GetEncodingParams(numSys, numPar, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
+	numChunks := uint64(4)
+	chunkLength := uint64(1024)
+
+	params := rs.EncodingParams{
+		NumChunks: numChunks,
+		ChunkLen:  chunkLength,
+	}
 	enc, err := group.NewKzgEncoder(params)
 	require.Nil(t, err)
 
@@ -29,7 +35,7 @@ func TestProveAllCosetThreads(t *testing.T) {
 		f := frames[i]
 		j := fIndices[i]
 
-		q, err := rs.GetLeadingCosetIndex(uint64(i), numSys+numPar)
+		q, err := rs.GetLeadingCosetIndex(uint64(i), numChunks)
 		require.Nil(t, err)
 
 		assert.Equal(t, j, q, "leading coset inconsistency")
