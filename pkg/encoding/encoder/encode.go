@@ -49,7 +49,9 @@ func (g *Encoder) Encode(inputFr []bls.Fr) (*GlobalPoly, []Frame, []uint32, erro
 	}
 
 	// create frames to group relevant info
-	frames, indices, err := g.MakeFrames(polyEvals)
+	evalsCopy := make([]bls.Fr, len(polyEvals))
+	copy(evalsCopy, polyEvals)
+	frames, indices, err := g.MakeFrames(evalsCopy)
 	if err != nil {
 		return nil, nil, nil, err
 	}
