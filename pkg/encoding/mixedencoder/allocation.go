@@ -56,7 +56,7 @@ func AddOffsets(allocations []*Allocation) error {
 	// Sort allocations by number of evaluations
 	sorted := make([]*Allocation, len(allocations))
 	copy(sorted, allocations)
-	sort.Slice(sorted, func(i, j int) bool {
+	sort.SliceStable(sorted, func(i, j int) bool {
 		return sorted[i].NumEvaluations > sorted[j].NumEvaluations
 	})
 

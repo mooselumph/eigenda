@@ -8,8 +8,9 @@ import (
 	rs "github.com/Layr-Labs/eigenda/pkg/encoding/encoder"
 	kzgrs "github.com/Layr-Labs/eigenda/pkg/encoding/kzgEncoder"
 	"github.com/Layr-Labs/eigenda/pkg/encoding/mixedencoder"
-	"github.com/Layr-Labs/eigenda/pkg/kzg/bn254"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/Layr-Labs/eigenda/pkg/kzg/bn254"
 )
 
 var (
@@ -78,8 +79,30 @@ func TestMixedEncoding(t *testing.T) {
 	// }
 
 	// Decode
-	inputs := make([]*mixedencoder.MixedDecoderInput, len(outputs))
-	for i, output := range outputs {
+	inputs := sampleInputs(outputs)
+
+	// for _, input := range inputs {
+	// 	testDecode(t, blob, input)
+	// }
+
+	numEvaluations := 0
+	for _, input := range inputs {
+		numEvaluations += input.Allocation.NumEvaluations
+	}
+	numEvaluations = int(rs.NextPowerOf2(uint64(numEvaluations)))
+
+	decoded, err := encoder.Decode(numEvaluations, len(blob), inputs)
+
+	assert.NoError(t, err)
+	assert.Equal(t, string(blob), string(decoded))
+
+}
+
+func sampleInputs(outputs []*mixedencoder.MixedEncodingOutput) []*mixedencoder.MixedDecoderInput {
+
+	inputs := make([]*mixedencoder.MixedDecoderInput, 0)
+
+	for _, output := range outputs {
 
 		frames := make([]rs.Frame, len(output.Frames))
 		for j, frame := range output.Frames {
@@ -88,31 +111,48 @@ func TestMixedEncoding(t *testing.T) {
 			}
 		}
 
-		inputs[i] = &mixedencoder.MixedDecoderInput{
+		indices := make([]uint32, len(output.Indices))
+		for j := range output.Indices {
+			indices[j] = uint32(j)
+		}
+
+		inputs = append(inputs, &mixedencoder.MixedDecoderInput{
 			EncodingParams: output.Param,
 			Allocation:     output.Allocation,
 			Frames:         frames,
-			Indices:        output.Indices,
+			Indices:        indices,
+		})
+	}
+
+	return inputs
+
+}
+
+func testDecode(t *testing.T, blob []byte, input *mixedencoder.MixedDecoderInput) {
+
+	enc, err := rs.NewEncoder(input.EncodingParams, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indices := make([]uint64, len(input.Indices))
+	for i := range input.Indices {
+		indices[i] = uint64(i)
+	}
+
+	recoveredCoeffs, err := enc.Decode(input.Frames, indices)
+	assert.NoError(t, err)
+
+	origCoeffs := rs.ToFrArray(blob)
+	shiftedCoeffs := mixedencoder.ShiftPoly(origCoeffs, input.Allocation.Offset)
+
+	notEqual := make([]int, 0)
+	for i := 0; i < len(shiftedCoeffs); i++ {
+		if !bn254.EqualFr(&shiftedCoeffs[i], &recoveredCoeffs[i]) {
+			notEqual = append(notEqual, i)
 		}
 	}
-
-	numEvaluations := 0
-	for _, input := range inputs {
-		numEvaluations += input.Allocation.NumEvaluations
-	}
-	numEvaluations = int(rs.NextPowerOf2(uint64(numEvaluations)))
-
-	tInputs := []*mixedencoder.MixedDecoderInput{
-		inputs[1], inputs[2],
-	}
-
-	decoded, err := encoder.Decode(numEvaluations, len(blob), tInputs)
-
-	assert.NoError(t, err)
-	assert.Equal(t, string(blob), string(decoded))
-
-	fmt.Println("Offset", tInputs[0].Allocation.RootIndex)
-	fmt.Println(string(decoded))
+	assert.Equal(t, []int{}, notEqual)
 
 }
 

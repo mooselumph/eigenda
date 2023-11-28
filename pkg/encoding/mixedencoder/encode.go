@@ -66,6 +66,7 @@ func (e *MixedEncoder) Encode(input []byte, params []rs.EncodingParams) (*bls.G1
 
 		// Condition the input
 		shiftedPolyCoeffs := ShiftPoly(coeffs, allocations[ind].Offset)
+		fmt.Println("Offset", allocations[ind].Offset, "RootIndex", allocations[ind].RootIndex)
 
 		// Encode
 		shiftedCommit, _, frames, indices, err := encoder.Encode(shiftedPolyCoeffs)

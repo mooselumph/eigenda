@@ -25,7 +25,7 @@ func TestEncodeDecode_InvertsWhenSamplingAllFrames(t *testing.T) {
 
 	// sample some frames
 	samples, indices := sampleFrames(frames, uint64(len(frames)))
-	data, err := enc.Decode(samples, indices, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
+	data, err := enc.DecodeBytes(samples, indices, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
 
 	require.Nil(t, err)
 	require.NotNil(t, data)
@@ -47,7 +47,7 @@ func TestEncodeDecode_InvertsWhenSamplingMissingFrame(t *testing.T) {
 
 	// sample some frames
 	samples, indices := sampleFrames(frames, uint64(len(frames)-1))
-	data, err := enc.Decode(samples, indices, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
+	data, err := enc.DecodeBytes(samples, indices, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
 
 	require.Nil(t, err)
 	require.NotNil(t, data)
@@ -71,7 +71,7 @@ func TestEncodeDecode_ErrorsWhenNotEnoughSampledFrames(t *testing.T) {
 
 	// sample some frames
 	samples, indices := sampleFrames(frames, uint64(len(frames)-2))
-	data, err := enc.Decode(samples, indices, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
+	data, err := enc.DecodeBytes(samples, indices, uint64(len(GETTYSBURG_ADDRESS_BYTES)))
 
 	require.Nil(t, data)
 	require.NotNil(t, err)

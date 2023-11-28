@@ -15,12 +15,7 @@ import (
 // maxInputSize is the upper bound of the original data size. This is needed because
 // the frames and indices don't encode the length of the original data. If maxInputSize
 // is smaller than the original input size, decoded data will be trimmed to fit the maxInputSize.
-func (g *Encoder) Decode(frames []Frame, indices []uint64, maxInputSize uint64) ([]byte, error) {
-	numSys := GetNumSys(maxInputSize, g.ChunkLen)
-
-	if uint64(len(frames)) < numSys {
-		return nil, errors.New("number of frame must be sufficient")
-	}
+func (g *Encoder) Decode(frames []Frame, indices []uint64) ([]bls.Fr, error) {
 
 	samples := make([]*bls.Fr, g.NumEvaluations())
 	// copy evals based on frame coeffs into samples
@@ -66,6 +61,22 @@ func (g *Encoder) Decode(frames []Frame, indices []uint64, maxInputSize uint64) 
 	}
 
 	reconstructedPoly, err := g.Fs.FFT(reconstructedData, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return reconstructedPoly, nil
+}
+
+func (g *Encoder) DecodeBytes(frames []Frame, indices []uint64, maxInputSize uint64) ([]byte, error) {
+
+	numSys := GetNumSys(maxInputSize, g.ChunkLen)
+
+	if uint64(len(frames)) < numSys {
+		return nil, errors.New("number of frame must be sufficient")
+	}
+
+	reconstructedPoly, err := g.Decode(frames, indices)
 	if err != nil {
 		return nil, err
 	}

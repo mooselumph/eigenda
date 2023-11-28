@@ -10,5 +10,5 @@ func (g *KzgEncoder) Decode(frames []Frame, indices []uint64, maxInputSize uint6
 		rsFrames[ind] = rs.Frame{Coeffs: frame.Coeffs}
 	}
 
-	return g.Encoder.Decode(rsFrames, indices, maxInputSize)
+	return g.Encoder.DecodeBytes(rsFrames, indices, maxInputSize)
 }
