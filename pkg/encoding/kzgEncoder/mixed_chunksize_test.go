@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	codingRate = 5
-	q          = 8
+	bytesPerSymbol = 31
+	codingRate     = 5
 
 	d = distribution{
 		smallStake:  32,
@@ -38,20 +38,16 @@ type distribution struct {
 }
 
 func (d distribution) totalStake() int {
-	return d.smallStake + d.mediumStake + d.largeStake
+	return d.smallStake*d.numSmall + d.mediumStake*d.numMedium + d.largeStake*d.numLarge
 }
 
-func (d distribution) numTotal() int {
-	return d.numSmall + d.numMedium + d.numLarge
+func getChunkLength(encodedBlobSize, stake, totalStake int) int {
+	return int(rs.NextPowerOf2(uint64(encodedBlobSize*stake/totalStake/bytesPerSymbol) + 1))
 }
 
-func getChunkSize(encodedBlobSize, stake, totalStake int) int {
-	return int(rs.NextPowerOf2(uint64(encodedBlobSize * stake / totalStake)))
-}
+func getNumChunks(encodedBlobSize, chunkLength, stake, totalStake int) int {
 
-func getNumChunks(encodedBlobSize, chunkSize, stake, totalStake int) int {
-
-	return encodedBlobSize*stake/(totalStake*chunkSize) + 1
+	return encodedBlobSize*stake/(totalStake*chunkLength*bytesPerSymbol) + 1
 
 }
 
@@ -59,33 +55,36 @@ func getMixedEncodingParams(d distribution, encodedBlobSize int) []rs.EncodingPa
 	return []rs.EncodingParams{
 		{
 			NumChunks: rs.NextPowerOf2(uint64(d.numSmall)),
-			ChunkLen:  uint64(getChunkSize(encodedBlobSize, d.smallStake, d.totalStake())),
+			ChunkLen:  uint64(getChunkLength(encodedBlobSize, d.smallStake, d.totalStake())),
 		},
 		{
 			NumChunks: rs.NextPowerOf2(uint64(d.numMedium)),
-			ChunkLen:  uint64(getChunkSize(encodedBlobSize, d.mediumStake, d.totalStake())),
+			ChunkLen:  uint64(getChunkLength(encodedBlobSize, d.mediumStake, d.totalStake())),
 		},
 		{
 			NumChunks: rs.NextPowerOf2(uint64(d.numLarge)),
-			ChunkLen:  uint64(getChunkSize(encodedBlobSize, d.largeStake, d.totalStake())),
+			ChunkLen:  uint64(getChunkLength(encodedBlobSize, d.largeStake, d.totalStake())),
 		},
 	}
 }
 
 func getStandardEncodingParams(d distribution, encodedBlobSize int) []rs.EncodingParams {
 
-	chunkSize := int(rs.NextPowerOf2(uint64(encodedBlobSize/(d.numTotal()*q) + 1)))
+	chunkLength := getChunkLength(encodedBlobSize, d.smallStake, d.totalStake())
 
-	numChunks := d.numSmall * getNumChunks(encodedBlobSize, chunkSize, d.smallStake, d.totalStake())
-	numChunks += d.numMedium * getNumChunks(encodedBlobSize, chunkSize, d.mediumStake, d.totalStake())
-	numChunks += d.numLarge * getNumChunks(encodedBlobSize, chunkSize, d.largeStake, d.totalStake())
+	numChunksSmall := d.numSmall * getNumChunks(encodedBlobSize, chunkLength, d.smallStake, d.totalStake())
+	numChunksMedium := d.numMedium * getNumChunks(encodedBlobSize, chunkLength, d.mediumStake, d.totalStake())
+	numChunksLarge := d.numLarge * getNumChunks(encodedBlobSize, chunkLength, d.largeStake, d.totalStake())
 
+	fmt.Println("numChunksSmall", numChunksSmall, "numChunksMedium", numChunksMedium, "numChunksLarge", numChunksLarge)
+
+	numChunks := numChunksSmall + numChunksMedium + numChunksLarge
 	numChunks = int(rs.NextPowerOf2(uint64(numChunks)))
 
 	return []rs.EncodingParams{
 		{
 			NumChunks: uint64(numChunks),
-			ChunkLen:  uint64(chunkSize),
+			ChunkLen:  uint64(chunkLength),
 		},
 	}
 
@@ -99,7 +98,7 @@ func TestMixedChunkSizes(t *testing.T) {
 
 	group, _ := kzgRs.NewKzgEncoderGroup(kzgConfig)
 
-	blobSizes := []int{1000}
+	blobSizes := []int{100000}
 
 	for _, blobSize := range blobSizes {
 
