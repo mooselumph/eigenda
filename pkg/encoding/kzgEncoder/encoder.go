@@ -223,21 +223,8 @@ func (g *KzgEncoder) Encode(inputFr []bls.Fr) (*bls.G1Point, *bls.G1Point, []Fra
 
 	intermediate := time.Now()
 
-	polyDegreePlus1 := uint64(len(inputFr))
+	lowDegreeProof := g.GenerateLengthProof(poly.Coeffs)
 
-	if g.Verbose {
-		log.Printf("    Commiting takes  %v\n", time.Since(intermediate))
-		intermediate = time.Now()
-
-		log.Printf("shift %v\n", g.SRSOrder-polyDegreePlus1)
-		log.Printf("order %v\n", len(g.Srs.G2))
-		log.Println("low degree verification info")
-	}
-
-	shiftedSecret := g.Srs.G1[g.SRSOrder-polyDegreePlus1:]
-
-	//The proof of low degree is commitment of the polynomial shifted to the largest srs degree
-	lowDegreeProof := bls.LinCombG1(shiftedSecret, poly.Coeffs[:polyDegreePlus1])
 	//fmt.Println("kzgFFT lowDegreeProof", lowDegreeProof, "poly len ", len(fullCoeffsPoly), "order", len(g.Ks.SecretG2) )
 	//ok := VerifyLowDegreeProof(&commit, lowDegreeProof, polyDegreePlus1-1, g.SRSOrder, g.Srs.G2)
 	//if !ok {
@@ -248,7 +235,7 @@ func (g *KzgEncoder) Encode(inputFr []bls.Fr) (*bls.G1Point, *bls.G1Point, []Fra
 	//	}
 
 	if g.Verbose {
-		log.Printf("    Generating Low Degree Proof takes  %v\n", time.Since(intermediate))
+		log.Printf("    Generating commitments takes  %v\n", time.Since(intermediate))
 		intermediate = time.Now()
 	}
 
@@ -276,12 +263,29 @@ func (g *KzgEncoder) Encode(inputFr []bls.Fr) (*bls.G1Point, *bls.G1Point, []Fra
 	if g.Verbose {
 		log.Printf("Total encoding took      %v\n", time.Since(startTime))
 	}
-	return &commit, lowDegreeProof, kzgFrames, indices, nil
+	return commit, lowDegreeProof, kzgFrames, indices, nil
 }
 
-func (g *KzgEncoder) Commit(polyFr []bls.Fr) bls.G1Point {
+func (g *KzgEncoder) Commit(polyFr []bls.Fr) *bls.G1Point {
 	commit := g.Ks.CommitToPoly(polyFr)
-	return *commit
+	return commit
+}
+
+func (g *KzgEncoder) GenerateLengthProof(coeffs []bls.Fr) *bls.G1Point {
+	polyDegreePlus1 := uint64(len(coeffs))
+
+	if g.Verbose {
+		log.Printf("shift %v\n", g.SRSOrder-polyDegreePlus1)
+		log.Printf("order %v\n", len(g.Srs.G2))
+		log.Println("low degree verification info")
+	}
+
+	shiftedSecret := g.Srs.G1[g.SRSOrder-polyDegreePlus1:]
+
+	//The proof of low degree is commitment of the polynomial shifted to the largest srs degree
+	lowDegreeProof := bls.LinCombG1(shiftedSecret, coeffs[:polyDegreePlus1])
+
+	return lowDegreeProof
 }
 
 // The function verify low degree proof against a poly commitment
