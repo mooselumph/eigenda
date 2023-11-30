@@ -36,15 +36,20 @@ func (env *Config) generateEigenDADeployConfig() EigenDADeployConfig {
 	stakers := make([]string, 0)
 	maxOperatorCount := env.Services.Counts.NumMaxOperatorCount
 
+	numStrategies := 2
+
 	total := float32(0)
-	stakes := [][]string{make([]string, len(env.Services.Stakes.Distribution))}
+	stakes := make([][]string, numStrategies)
 
 	for _, stake := range env.Services.Stakes.Distribution {
 		total += stake
 	}
 
-	for ind, stake := range env.Services.Stakes.Distribution {
-		stakes[0][ind] = strconv.FormatFloat(float64(stake/total*env.Services.Stakes.Total), 'f', 0, 32)
+	for i := 0; i < numStrategies; i++ {
+		stakes[i] = make([]string, len(env.Services.Stakes.Distribution))
+		for ind, stake := range env.Services.Stakes.Distribution {
+			stakes[i][ind] = strconv.FormatFloat(float64(stake/total*env.Services.Stakes.Total), 'f', 0, 32)
+		}
 	}
 
 	for i := 0; i < len(env.Services.Stakes.Distribution); i++ {
@@ -57,7 +62,7 @@ func (env *Config) generateEigenDADeployConfig() EigenDADeployConfig {
 
 	config := EigenDADeployConfig{
 		UseDefaults:         true,
-		NumStrategies:       1,
+		NumStrategies:       numStrategies,
 		MaxOperatorCount:    maxOperatorCount,
 		StakerPrivateKeys:   stakers,
 		StakerTokenAmounts:  stakes,
@@ -86,7 +91,7 @@ func (env *Config) deployEigenDAContracts() {
 	}
 	writeFile("script/eigenda_deploy_config.json", data)
 
-	execForgeScript("script/SetUpEigenDA.s.sol:SetupEigenDA", env.Pks.EcdsaMap[deployer.Name].PrivateKey, deployer, nil)
+	execForgeScript("script/SetUpEigenDA.s.sol:SetupEigenDA", env.Pks.EcdsaMap[deployer.Name].PrivateKey, deployer, []string{"-vvvv"})
 
 	//add relevant addresses to path
 	data = readFile("script/output/eigenda_deploy_output.json")
