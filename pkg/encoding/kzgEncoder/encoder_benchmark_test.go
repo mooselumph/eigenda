@@ -114,6 +114,10 @@ func TestParallelEncoding(t *testing.T) {
 
 	params := []rs.EncodingParams{
 		{
+			ChunkLen:  512,
+			NumChunks: 128,
+		},
+		{
 			ChunkLen:  64,
 			NumChunks: 1024,
 		},
@@ -123,12 +127,12 @@ func TestParallelEncoding(t *testing.T) {
 		},
 	}
 
-	blobLength := 64
+	blobLength := 2000
 	blob := make([]byte, blobLength*31)
 	_, err := rand.Read(blob)
 	assert.NoError(t, err)
 
-	numRoutines := 40
+	numRoutines := 1
 
 	for _, param := range params {
 
