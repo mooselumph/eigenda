@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
+	"time"
 
 	rs "github.com/Layr-Labs/eigenda/pkg/encoding/encoder"
 	kzgRs "github.com/Layr-Labs/eigenda/pkg/encoding/kzgEncoder"
@@ -50,14 +52,14 @@ func TestBenchmarkEncoding(t *testing.T) {
 			}
 
 			fmt.Printf("NumChunks: %d, ChunkLength: %d \n", numChunks, chunkLength)
-			benchmarkEncoding(t, group, blob, params)
+			benchmarkEncoding(t, group, blob, params, false)
 
 			result := testing.Benchmark(func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					// control = profile.Start(profile.ProfilePath("."))
 
 					fmt.Printf("Benchmarking encoding with %d chunks of length %d", numChunks, chunkLength)
-					benchmarkEncoding(t, group, blob, params)
+					benchmarkEncoding(t, group, blob, params, false)
 
 					// control.Stop()
 				}
@@ -70,9 +72,9 @@ func TestBenchmarkEncoding(t *testing.T) {
 
 }
 
-func benchmarkEncoding(t *testing.T, group *kzgRs.KzgEncoderGroup, input []byte, params rs.EncodingParams) {
+func benchmarkEncoding(t *testing.T, group *kzgRs.KzgEncoderGroup, input []byte, params rs.EncodingParams, decode bool) {
 
-	enc, err := group.NewKzgEncoder(params)
+	enc, err := group.GetKzgEncoder(params)
 	if err != nil {
 		t.Errorf("Error making rs: %q", err)
 	}
@@ -80,12 +82,16 @@ func benchmarkEncoding(t *testing.T, group *kzgRs.KzgEncoderGroup, input []byte,
 	//encode the data
 	_, _, frames, _, err := enc.EncodeBytes(input)
 
+	if err != nil {
+		t.Errorf("Error Encoding:\n Data:\n %q \n Err: %q", input, err)
+	}
+
 	for _, frame := range frames {
 		assert.NotEqual(t, len(frame.Coeffs), 0)
 	}
 
-	if err != nil {
-		t.Errorf("Error Encoding:\n Data:\n %q \n Err: %q", input, err)
+	if !decode {
+		return
 	}
 
 	//sample the correct systematic frames
@@ -96,5 +102,51 @@ func benchmarkEncoding(t *testing.T, group *kzgRs.KzgEncoderGroup, input []byte,
 		t.Errorf("Error Decoding:\n Data:\n %q \n Err: %q", input, err)
 	}
 	assert.Equal(t, input, data, "Input data was not equal to the decoded data")
+
+}
+
+func TestParallelEncoding(t *testing.T) {
+
+	teardownSuite := setupSuite(t)
+	defer teardownSuite(t)
+
+	group, _ := kzgRs.NewKzgEncoderGroup(kzgConfig)
+
+	params := []rs.EncodingParams{
+		{
+			ChunkLen:  64,
+			NumChunks: 1024,
+		},
+		{
+			ChunkLen:  8,
+			NumChunks: 8192,
+		},
+	}
+
+	blobLength := 64
+	blob := make([]byte, blobLength*31)
+	_, err := rand.Read(blob)
+	assert.NoError(t, err)
+
+	numRoutines := 40
+
+	for _, param := range params {
+
+		start := time.Now()
+
+		var wg sync.WaitGroup
+		for i := 0; i < numRoutines; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				benchmarkEncoding(t, group, blob, param, false)
+			}()
+		}
+
+		wg.Wait()
+
+		fmt.Println("Parallel Encoding took ", time.Since(start))
+
+	}
 
 }
